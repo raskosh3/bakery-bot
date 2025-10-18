@@ -1,11 +1,9 @@
 import asyncio
 import logging
-import os
 import sys
+import os
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
 
 from config import Config
 from handlers.start import router as start_router
@@ -21,21 +19,17 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-
 async def main():
     try:
-        logger.info("🚀 Запуск бота на Railway...")
-
+        logger.info("🚀 Запуск бота на Replit...")
+        
         # Проверка токена
         if not Config.BOT_TOKEN:
-            logger.error("❌ BOT_TOKEN не установлен!")
+            logger.error("❌ BOT_TOKEN не установлен! Проверьте Secrets в Replit")
             return
-
+        
         # Инициализация бота
-        bot = Bot(
-            token=Config.BOT_TOKEN,
-            default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-        )
+        bot = Bot(token=Config.BOT_TOKEN)
         storage = MemoryStorage()
         dp = Dispatcher(storage=storage)
 
@@ -45,31 +39,22 @@ async def main():
         dp.include_router(cart_router)
         dp.include_router(order_router)
 
-        # Удаляем webhook (используем polling)
+        # Удаляем webhook
         await bot.delete_webhook(drop_pending_updates=True)
-
+        
         logger.info("✅ Бот запущен и готов к работе!")
-        logger.info(f"🤖 Бот: @{(await bot.get_me()).username}")
-
+        logger.info("📱 Отправьте /start боту в Telegram")
+        
         # Запускаем поллинг
         await dp.start_polling(bot)
-
+        
     except Exception as e:
         logger.error(f"❌ Ошибка при запуске бота: {e}")
     finally:
         if 'bot' in locals():
             await bot.session.close()
 
-
 if __name__ == "__main__":
-    # Проверяем обязательные переменные
-    required_vars = ['BOT_TOKEN']
-    missing_vars = [var for var in required_vars if not os.getenv(var)]
-
-    if missing_vars:
-        print(f"❌ Отсутствуют переменные: {missing_vars}")
-        sys.exit(1)
-
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
