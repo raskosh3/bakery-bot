@@ -1,15 +1,13 @@
 import os
 from dataclasses import dataclass
-from dotenv import load_dotenv
-
-load_dotenv()
 
 @dataclass
 class Config:
+    # Replit использует Secrets вместо .env
     BOT_TOKEN: str = os.getenv('BOT_TOKEN')
     ADMIN_ID: int = int(os.getenv('ADMIN_ID', 0))
 
-    # Для Railway временно отключаем изображения
+    # Временно без изображений
     WELCOME_IMAGE = None
     PRODUCTS = {
         'пироги': {
@@ -130,4 +128,5 @@ class Config:
                 # Без изображения
             },
         }
+
     }
