@@ -18,18 +18,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Глобальные переменные
-bot = None
-dp = None
-
 async def health_check(request):
-    """Health check endpoint для Render"""
+    """Health check endpoint"""
     return web.Response(text="✅ Bakery Bot is running!")
 
-async def start_bot():
-    """Запуск Telegram бота"""
-    global bot, dp
+async def start_web_server():
+    """Запуск веб-сервера - В ПЕРВУЮ ОЧЕРЕДЬ"""
+    app = web.Application()
+    app.router.add_get('/', health_check)
+    app.router.add_get('/health', health_check)
     
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    port = int(os.environ.get("PORT", 10000))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    
+    logger.info(f"🌐 Web server started on port {port}")
+    return runner
+
+async def start_telegram_bot():
+    """Запуск Telegram бота - во вторую очередь"""
     try:
         logger.info("🚀 Starting Telegram bot...")
         
@@ -46,47 +56,32 @@ async def start_bot():
         
         logger.info("✅ Telegram bot started!")
         
-        # Запускаем поллинг
+        # Запускаем поллинг (блокирующая операция)
         await dp.start_polling(bot)
         
     except Exception as e:
         logger.error(f"❌ Bot error: {e}")
+        raise
 
 async def main():
     """Основная функция"""
-    # Создаем веб-сервер для Render
-    app = web.Application()
-    app.router.add_get('/', health_check)
+    # 1. Сначала запускаем веб-сервер (важно для Render!)
+    runner = await start_web_server()
     
-    # Настройка веб-сервера
-    runner = web.AppRunner(app)
-    await runner.setup()
-    
-    port = int(os.environ.get("PORT", 10000))
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-    
-    logger.info(f"🌐 Web server started on port {port}")
-    
-    # Запускаем бота в фоновой задаче
-    bot_task = asyncio.create_task(start_bot())
-    
+    # 2. Затем запускаем бота
     try:
-        # Ожидаем завершения обеих задач
-        await asyncio.gather(bot_task)
+        await start_telegram_bot()
     except Exception as e:
-        logger.error(f"Main error: {e}")
+        logger.error(f"Bot failed: {e}")
     finally:
         # Корректное завершение
         await runner.cleanup()
-        if bot:
-            await bot.session.close()
 
 if __name__ == "__main__":
-    # Проверяем обязательные переменные
+    # Проверяем переменные
     if not os.getenv('BOT_TOKEN'):
         logger.error("❌ BOT_TOKEN not set!")
         exit(1)
         
-    # Запускаем приложение
+    # Запускаем
     asyncio.run(main())
